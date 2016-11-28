@@ -1,0 +1,23 @@
+# THIS IS A DEVELOPMENT ENVIRONMENT DO NOT USE IN PRODUCTION
+# => For a production deployment please check out the `hooks/deploy` script.
+version: '2'
+
+services:
+  queue:
+    image: redis:3.2.5-alpine
+    volumes:
+      - queue:/data
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.onbuild
+    image: zetaron/deployment-queue-worker
+    depends_on:
+      - queue
+    environment:
+      - REDIS_URL=queue:6379
+      - WORKER_IMAGE=zetaron/github-deployment-worker:1.0.0
+
+volumes:
+  queue:
+    driver: local

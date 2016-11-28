@@ -1,0 +1,81 @@
+#!/bin/sh
+set -ex
+
+DNSNAME=github-hook-receiver.zetaron.de
+WORKER_IMAGE=zetaron/github-deployment-worker:1.0.0
+
+REDIS_VERSION=3.2.5
+GITHUB_HOOK_RECEIVER_VERSION=1.0.0
+DEPLOYMENT_QUEUE_WORKER_VERSION=1.0.0
+
+REDIS_REPLICAS=1
+GITHUB_HOOK_RECEIVER_REPLICAS=1
+DEPLOYMENT_QUEUE_WORKER_REPLICAS=1
+
+docker pull redis:${REDIS_VERSION}-alpine
+docker pull zetaron/github-hook-receiver:$GITHUB_HOOK_RECEIVER_VERSION
+docker pull zetaron/deployment-queue-worker:$DEPLOYMENT_QUEUE_WORKER_VERSION
+docker pull $WORKER_IMAGE
+
+if [ $(docker volume ls -q | grep "deployment-queue") == "" ]
+then
+    docker volume create \
+           --name github-deployment-queue
+
+    docker volume create \
+           --name deployment-queue-worker-secrets
+
+    docker volume create \
+           --name github-hook-receiver-secrets
+
+    docker network create \
+           --driver overlay \
+           deployment-queue-backend
+
+    docker service create \
+           --name deployment-queue \
+           --network deployment-queue-backend \
+           --mount type=volume,source=cutter-queue,destination=/data \
+           --replicas $REDIS_REPLICAS \
+           --constraint "node.hostname == cluster-node-1" \
+           redis:${REDIS_VERSION}-alpine
+
+    docker service create \
+           --name github-hook-receiver \
+           --network frontends \
+           --network deployment-queue-backend \
+           --mount type=volume,source=github-hook-receiver-secrets,destination=/var/cache/secrets \
+           --env REDIS_URL=deployment-queue:6379 \
+           --replicas $GITHUB_HOOK_RECEIVER_REPLICAS \
+           --label ingress=true \
+           --label ingress.dnsname=$DNSNAME \
+           --label ingress.targetport=80 \
+           --constraint "node.hostname == cluster-node-1" \
+           zetaron/github-hook-receiver:$GITHUB_HOOK_RECEIVER_VERSION
+
+    docker service create \
+           --name deployment-queue-worker \
+           --network deployment-queue-backend \
+           --env REDIS_URL=deployment-queue:6379 \
+           --env WORKER_IMAGE=$WORKER_IMAGE \
+           --replicas $DEPLOYMENT_QUEUE_WORKER_REPLICAS \
+           --constraint "node.hostname == cluster-node-1" \
+           zetaron/deployment-queue-worker:$DEPLOYMENT_QUEUE_WORKER_VERSION
+else
+    docker service update \
+           --image redis:${REDIS_VERSION}-alpine \
+           --replicas $REDIS_REPLICAS \
+           deployment-queue
+
+    docker service update \
+           --image zetaron/github-hook-receiver:$GITHUB_HOOK_RECEIVER_VERSION \
+           --label-add ingress.dnsname=$DNSNAME \
+           --replicas $GITHUB_HOOK_RECEIVER_REPLICAS \
+           github-hook-receiver
+
+    docker service update \
+           --image zetaron/deployment-queue-worker:$DEPLOYMENT_QUEUE_WORKER_VERSION \
+           --env-add WORKER_IMAGE=$WORKER_IMAGE \
+           --replicas $DEPLOYMENT_QUEUE_WORKER_REPLICAS \
+           deployment-queue-worker
+fi
