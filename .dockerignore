@@ -1,3 +1,5 @@
 hooks/
 docker-compose*
 Dockerfile*
+vendor/
+.git
