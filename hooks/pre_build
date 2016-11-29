@@ -5,7 +5,7 @@ echo "=> Installing build dependencies"
 docker run --rm -v "$PWD:/usr/src/code" zetaron/trash:0.2.5
 
 echo "=> Building binary"
-docker run --rm -v "$PWD:/usr/src/deployment-queue-worker" -w "/usr/src/deployment-queue-worker" golang:1.7.3 \
+docker run --rm -v "$PWD:/usr/src/deployment-queue-worker" -w "/usr/src/deployment-queue-worker" golang:1.7.3-alpine \
        sh -c "go-wrapper download \
           && go-wrapper install \
           && go build -v"
