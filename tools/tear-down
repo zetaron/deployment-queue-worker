@@ -1,0 +1,27 @@
+#!/bin/sh
+
+while true; do
+    read -p "Really tear down the deployment?" yn_teardown
+    case $yn_teardown in
+        [Yy]* ) # proceede after the loop
+                break;;
+        [Nn]* ) exit; break;;
+        * ) echo "Please answer yes or no.";;
+    esac
+done
+
+docker service rm deployment-queue-worker
+docker service rm deployment-queue
+docker network rm deployment-queue-backend
+
+while true; do
+    read -p "Do you want to keep the secret volumes?" yn_keep_secrets
+    case $yn_keep_secrets in
+         [Yy]* )
+               break;;
+         [Nn]* )
+               docker volume rm deployment-queue-worker-secrets
+               break;;
+         * ) echo "Please answer yes or no.";;
+    esac
+done
