@@ -53,13 +53,6 @@ var RootCmd = &cobra.Command{
 
 		log.Infof("Starting queue-worker version %s", version)
 
-		if !viper.IsSet("worker.image") {
-			log.Fatal("No worker image defined.")
-			return
-		}
-
-		workerImageName = viper.GetString("worker.image")
-
 		deploymentIDTemplate = template.Must(template.New("deployment-id").Parse(viper.GetString("deployment_id_template")))
 		cacheVolumeNameTemplate = template.Must(template.New("cache-volume-name-template").Parse(viper.GetString("cache_volume_name_template")))
 		secretsVolumeNameTemplate = template.Must(template.New("secrets-volume-name").Parse(viper.GetString("secrets_volume_name_template")))
@@ -80,14 +73,13 @@ var RootCmd = &cobra.Command{
 		log.Info("Opened queue")
 
 		for i := 0; i < viper.GetInt("worker.count"); i++ {
-			name := fmt.Sprintf("%s-consumer-%d-on-database-%d", workerImageName, i, viper.GetInt("redis.database"))
+			name := fmt.Sprintf("consumer-%d-on-database-%d", i, viper.GetInt("redis.database"))
 			queue.AddConsumer(name, &DeploymentEventConsumer{
 				name: name,
 			})
 
 			log.WithFields(log.Fields{
 				"name":           name,
-				"worker-image":   viper.GetString("worker.image"),
 				"worker-count":   viper.GetInt("worker.count"),
 				"redis-database": viper.GetInt("redis.database"),
 				"redis-url":      viper.GetString("redis.url"),

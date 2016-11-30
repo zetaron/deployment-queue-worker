@@ -94,16 +94,16 @@ func (consumer *DeploymentEventConsumer) Consume(delivery rmq.Delivery) {
 	script := fmt.Sprintf(
 		`#!/bin/sh
 stdin=$(</dev/stdin)
-docker pull %s
 docker volume create %s
 echo "$stdin" | docker run --rm -i -v %s:/var/cache/deployment alpine:3.4 dd of=/var/cache/deployment/deployment-event.json
-docker run --rm -v %s:/var/cache/secrets:ro -v %s:/var/cache/deployment %s`,
-		workerImageName,
+SECRETS_VOLUME_NAME=%s DEPLOYMENT_CACHE_VOLUME_NAME=%s docker-compose --file docker-compose.deploy.yml --project-name %s up -d
+docker wait %s_deploy
+`,
 		cacheVolumeName,
 		cacheVolumeName,
 		secretsVolumeName,
 		cacheVolumeName,
-		workerImageName,
+		cacheVolumeName,
 	)
 	scriptRunnerCommand := exec.Command(
 		"/bin/sh",
