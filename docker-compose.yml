@@ -16,7 +16,8 @@ services:
       - queue
     environment:
       - REDIS_URL=queue:6379
-      - WORKER_IMAGE=zetaron/github-deployment-worker:1.0.0
+    volumes:
+      - ./deployment-runner.sh:/usr/bin/deployment-runner.sh
 
 volumes:
   queue:

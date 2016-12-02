@@ -91,23 +91,10 @@ func (consumer *DeploymentEventConsumer) Consume(delivery rmq.Delivery) {
 	secretsVolumeName = secretsVolumeNameBuffer.String()
 	cacheVolumeName = cacheVolumeNameBuffer.String()
 
-	script := fmt.Sprintf(
-		`#!/bin/sh
-stdin=$(</dev/stdin)
-docker volume create %s
-echo "$stdin" | docker run --rm -i -v %s:/var/cache/deployment alpine:3.4 dd of=/var/cache/deployment/deployment-event.json
-SECRETS_VOLUME_NAME=%s DEPLOYMENT_CACHE_VOLUME_NAME=%s docker-compose --file docker-compose.deploy.yml --project-name %s up -d
-docker wait %s_deploy
-`,
-		cacheVolumeName,
+	scriptRunnerCommand := exec.Command(
+		"/usr/bin/deployment-runner.sh",
 		cacheVolumeName,
 		secretsVolumeName,
-		cacheVolumeName,
-		cacheVolumeName,
-	)
-	scriptRunnerCommand := exec.Command(
-		"/bin/sh",
-		script,
 	)
 	scriptRunnerCommand.Stdout = os.Stdout
 	scriptRunnerCommand.Stderr = os.Stderr
@@ -116,13 +103,13 @@ docker wait %s_deploy
 		delivery.Reject()
 
 		log.WithFields(log.Fields{
-			"consumer":       consumer.name,
-			"error":          err,
-			"worker-image":   workerImageName,
-			"deployment":     deploymentID,
-			"raw-payload":    delivery.Payload(),
-			"parsed-payload": event,
-			"cache-volume":   cacheVolumeName,
+			"consumer":                consumer.name,
+			"error":                   err,
+			"deployment":              deploymentID,
+			"deployment-cache-volume": cacheVolumeName,
+			"secrets-volume":          secretsVolumeName,
+			"parsed-payload":          event,
+			"raw-payload":             delivery.Payload(),
 		}).Error("Failed to run deployment worker.")
 
 		return
