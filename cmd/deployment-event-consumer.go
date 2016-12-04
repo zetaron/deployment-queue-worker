@@ -24,7 +24,6 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"fmt"
 	"github.com/adjust/rmq"
 	"strings"
 )
@@ -95,6 +94,7 @@ func (consumer *DeploymentEventConsumer) Consume(delivery rmq.Delivery) {
 		"/usr/bin/deployment-runner.sh",
 		cacheVolumeName,
 		secretsVolumeName,
+		workerImageName,
 	)
 	scriptRunnerCommand.Stdout = os.Stdout
 	scriptRunnerCommand.Stderr = os.Stderr
@@ -105,6 +105,7 @@ func (consumer *DeploymentEventConsumer) Consume(delivery rmq.Delivery) {
 		log.WithFields(log.Fields{
 			"consumer":                consumer.name,
 			"error":                   err,
+			"worker-image":            workerImageName,
 			"deployment":              deploymentID,
 			"deployment-cache-volume": cacheVolumeName,
 			"secrets-volume":          secretsVolumeName,

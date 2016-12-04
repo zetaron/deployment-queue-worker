@@ -38,24 +38,37 @@ var deploymentIDTemplate *template.Template
 var secretsVolumeNameTemplate *template.Template
 var cacheVolumeNameTemplate *template.Template
 
+func formatAsNumber(intValue float64) string {
+	log.WithFields(log.Fields{
+		"value": int(intValue),
+	}).Info("Going to format as a number...")
+	return fmt.Sprintf("%d", int(intValue))
+}
+
 // This represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "queue-worker",
 	Short: "Process queue entries.",
 	Long:  `Starts an instance of the worker image with mounted project environment secrets and a deployment cache.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		viper.SetDefault("deployment_id_template", "deployment-{{.deployment.id}}")
-		viper.SetDefault("cache_volume_name_template", "{{.repository.name}}-{{.deployment.environment}}-deployment-{{.deployment.id}}")
+		viper.SetDefault("deployment_id_template", "deployment-{{.deployment.id | asNumber}}")
+		viper.SetDefault("cache_volume_name_template", "{{.repository.name}}-{{.deployment.environment}}-deployment-{{.deployment.id | asNumber}}")
 		viper.SetDefault("secrets_volume_name_template", "{{.repository.name}}-{{.deployment.environment}}-secrets")
 		viper.SetDefault("redis.url", "redis:6379")
 		viper.SetDefault("redis.database", 1)
 		viper.SetDefault("worker.count", 1)
+		viper.SetDefault("worker.image", "zetaron/github-deployment-worker")
 
 		log.Infof("Starting queue-worker version %s", version)
 
-		deploymentIDTemplate = template.Must(template.New("deployment-id").Parse(viper.GetString("deployment_id_template")))
-		cacheVolumeNameTemplate = template.Must(template.New("cache-volume-name-template").Parse(viper.GetString("cache_volume_name_template")))
-		secretsVolumeNameTemplate = template.Must(template.New("secrets-volume-name").Parse(viper.GetString("secrets_volume_name_template")))
+		fmap := template.FuncMap{
+			"asNumber": formatAsNumber,
+		}
+
+		deploymentIDTemplate = template.Must(template.New("deployment-id").Funcs(fmap).Parse(viper.GetString("deployment_id_template")))
+		cacheVolumeNameTemplate = template.Must(template.New("cache-volume-name-template").Funcs(fmap).Parse(viper.GetString("cache_volume_name_template")))
+		secretsVolumeNameTemplate = template.Must(template.New("secrets-volume-name").Funcs(fmap).Parse(viper.GetString("secrets_volume_name_template")))
+		workerImageName = viper.GetString("worker.image")
 
 		connection := rmq.OpenConnection(
 			"queue-worker",

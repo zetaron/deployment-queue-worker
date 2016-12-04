@@ -2,13 +2,12 @@
 set -ex
 
 echo "=> Installing build dependencies"
-docker run --rm -v "$PWD:/usr/src/code" zetaron/trash:0.2.5
+mkdir -p $HOME/.trash-cache
+docker run --rm --user `id -u $USER`:`id -g $USER` -v "$PWD:/usr/src/code" -v $HOME/.trash-cache:/.trash-cache zetaron/trash:0.2.5
 
 echo "=> Building binary"
-docker run --rm -v "$PWD:/usr/src/deployment-queue-worker" -w "/usr/src/deployment-queue-worker" golang:1.7.3-alpine \
-       sh -c "go-wrapper download \
-          && go-wrapper install \
-          && go build -v"
+docker run --rm --user `id -u $USER`:`id -g $USER` -v "$PWD:/go/src/github.com/zetaron/deployment-queue-worker" -w "/go/src/github.com/zetaron/deployment-queue-worker" golang:1.7.3-alpine \
+       go build -v
 
 echo "=> Adding label-schema.org labels"
 echo "LABEL org.label-schema.build-date=\"$(date --rfc-3339=seconds)\" \

@@ -52,8 +52,10 @@ then
            --network deployment-queue-backend \
            --env REDIS_URL=deployment-queue:6379 \
            --env WORKER_IMAGE=$WORKER_IMAGE \
+           --mount type=volume,source=deployment-queue-worker-secrets,destination=/var/cache/secrets \
+           --mount type=bind,source=/var/run/docker.sock,destination=/var/run/docker.sock \
            --replicas $DEPLOYMENT_QUEUE_WORKER_REPLICAS \
-           --constraint "node.hostname == cluster-node-1" \
+           --constraint "node.role == manager" \
            zetaron/deployment-queue-worker:$DEPLOYMENT_QUEUE_WORKER_VERSION
 else
     docker service update \
