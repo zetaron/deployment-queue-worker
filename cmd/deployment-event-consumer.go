@@ -109,8 +109,6 @@ func (consumer *DeploymentEventConsumer) Consume(delivery rmq.Delivery) {
 			"deployment":              deploymentID,
 			"deployment-cache-volume": cacheVolumeName,
 			"secrets-volume":          secretsVolumeName,
-			"parsed-payload":          event,
-			"raw-payload":             delivery.Payload(),
 		}).Error("Failed to run deployment worker.")
 
 		return
